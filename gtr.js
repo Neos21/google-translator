@@ -18,6 +18,8 @@ const request = (url, options = {}) => new Promise((resolve, reject) => {
 
 (async () => {
   // TODO : Parse Options
+  console.log(process.argv.slice(2));
+  
   const text = 'こんにちは世界';
   const sourceLanguage = 'auto';  // Default : 'auto' (Auto-Detect)
   const targetLanguage = 'en';    // Default : 'en'

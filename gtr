@@ -16,9 +16,10 @@ Arguments:
   text  Text To Translate
 
 Options:
-  -s <string>  Source Language (Default 'auto')
-  -t <string>  Target Language (Default 'en')
-  -h, --help   Print This Usage And Quit
+  -s <string>    Source Language (Default 'auto')
+  -t <string>    Target Language (Default 'en')
+  -v, --verbose  Print Raw Response For Debugging
+  -h, --help     Print This Usage And Quit
 
 Examples:
     $ ${file_name} 'こんにちは'
@@ -42,9 +43,10 @@ if !(type 'jq' > /dev/null 2>&1); then
   exit 1
 fi
 
-s=''     # Source Language
-t=''     # Target Language
-text=''  # Text To Translate
+s=''              # Source Language
+t=''              # Target Language
+text=''           # Text To Translate
+is_verbose=false  # Is Verbose Mode
 
 # Parse Options : https://gist.github.com/kawarimidoll/371ee1741897608b945c8338b7a75ac3
 while (( $# > 0 )); do
@@ -52,6 +54,9 @@ while (( $# > 0 )); do
     '-h' | '--help')
       usage
       exit 0
+      ;;
+    '-v' | '--verbose' )
+      is_verbose=true
       ;;
     '-s' )
       if [ -z "$2" ]; then
@@ -79,7 +84,7 @@ while (( $# > 0 )); do
   esac
   shift
 done
-#echo "-s [${s}] : -t [${t}] : text [${text}]"
+#echo "-s [${s}] : -t [${t}] : -v [${is_verbose}] : text [${text}]"
 
 if [ -z "${text}" ]; then
   invalid 'Please Input Text'
@@ -120,5 +125,14 @@ encoded_text="$(encode_uri_component "${text}")"
 
 # curl : -sS -A
 result="$(curl --silent --show-error --user-agent 'GoogleTranslate/6.6.1.RC09.302039986 (Linux; U; Android 9; Redmi Note 8)' "${url}${encoded_text}")"
+# Verbose Mode
+if "${is_verbose}"; then
+  echo 'Raw Response :'
+  echo "${result}" | jq '.' 2> /dev/null || echo "${result}"
+  echo ''
+fi
 # jq : -j
-echo "${result}" | jq --join-output '.sentences[].trans + "\n"'
+echo "${result}" | jq --join-output '.sentences[].trans + "\n"' 2> /dev/null || cat <<EOL
+Parse Error :
+${result}
+EOL
