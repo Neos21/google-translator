@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Google Translator (HTML Version)</title>
+    <style>
+
+*, ::before, ::after {
+  box-sizing: border-box;
+}
+html {
+  font-family: monospace;
+}
+body {
+  margin: .5rem;
+  cursor: default;
+}
+h1 {
+  font-size: 1.2rem;
+  word-break: break-all;
+}
+
+ul {
+  padding-left: 1.5rem;
+}
+ul:not(#links) {
+  white-space: nowrap;
+}
+li {
+  margin-bottom: .25rem;
+}
+code {
+  border: 1px solid #ccc;
+  background: #f3f3f3;
+  margin: 0 .1rem;
+  padding: 0 .2rem;
+}
+
+input[type="text"] {
+  font-size: 16px;
+}
+#text {
+  display: block;
+  margin: .25rem 0 .5rem;
+  width: 100%;
+  min-width: 10rem;
+}
+#s, #t {
+  width: 5rem;
+}
+
+#is-verbose {
+  vertical-align: bottom;
+}
+
+#buttons {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: space-between;
+}
+button {
+  padding-right: 1rem;
+  padding-left : 1rem;
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+
+dt {
+  font-weight: bold;
+}
+dd {
+  margin-left: 1.5rem;
+}
+dd > pre {
+  overflow-y: scroll;
+  margin: .25rem 0 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: .5rem;
+  min-height: 6rem;
+  height: 6rem;
+  word-break: break-all;
+  white-space: pre-wrap;
+  resize: vertical;
+}
+
+#output, dt, dd {
+  display: none;
+}
+
+#verbose-title,
+#verbose-content {
+  color: #08c;
+}
+
+#error-title,
+#error-content {
+  color: #f00;
+}
+
+hr {
+  margin: 2rem 0;
+  border: 0;
+  border-top: 1px solid #ccc;
+}
+
+    </style>
+    <script src="./gtr.js"></script>
+    <script>
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Utils
+  const $ = selector => {
+    const element = document.querySelector(selector);
+    const $elem = {
+      elem: element,
+      show: ()   => { element.style.display = 'block'; return $elem; },
+      text: text => { element.textContent   = text   ; return $elem; }
+    };
+    return $elem;
+  };
+  const showAll = (...$elems) => $elems.forEach($elem => $elem.show());
+  
+  // Check Library
+  if(typeof window.gtrCreateUrl === 'undefined') {
+    console.error('Common Library Not Found');
+    showAll(
+      $('#error-title').text('Unknown Error :'),
+      $('#error-content'),
+      $('#error').text('Common Library Not Found'),
+      $('#output')
+    );
+    $('#exec').elem.disabled  = $('#reset').elem.disabled = true;
+    return;
+  }
+  
+  // Exec
+  $('#exec').elem.addEventListener('click', async event => {
+    event.preventDefault();
+    
+    document.querySelectorAll('dt, dd').forEach(elem => elem.style.display = 'none');
+    $('#output').show();
+    
+    // Parse Options
+    const s = $('#s').elem.value.trim() || null;
+    const t = $('#t').elem.value.trim() || null;
+    const isVerbose = $('#is-verbose').elem.checked;
+    const text = $('#text').elem.value.trim();
+    if(text === '') return showAll(
+      $('#error-title').text('Invalid :'),
+      $('#error-content'),
+      $('#error').text('Please Input Text'),
+    );
+    
+    const { url, userAgent } = window.gtrCreateUrl(s, t, text);
+    const result = await fetch(url, { headers: { 'User-Agent': userAgent } } ).then(response => response.text());
+    
+    // Show Result
+    if(isVerbose) {
+      console.log('Raw Response :');
+      try {
+        const verbose = JSON.stringify(JSON.parse(result), null, '  ');
+        console.log(verbose);
+        $('#verbose').text(verbose);
+      }
+      catch(_error) {
+        console.log(result);
+        $('#verbose').text(result);
+      }
+      showAll($('#verbose-title'), $('#verbose-content'));
+    }
+    try {
+      const json = JSON.parse(result);
+      const translatedText = json.sentences.map(sentence => sentence.trans).join('');
+      console.log(translatedText);
+      $('#result').text(translatedText);
+      showAll($('#result-title'), $('#result-content'));
+    }
+    catch(error) {
+      console.error('Parse Error :');
+      console.error(error);
+      console.error(result);
+      $('#error').text(error.toString() + '\n' + result);
+      showAll($('#error-title').text('Parse Error :'), $('#error-content'));
+    }
+  });
+  
+  // Parse Query Parameters
+  const params = [...new URLSearchParams(location.search)].reduce((acc, pair) => ({...acc, [pair[0]]: pair[1]}), {});
+  console.log(params);
+  if(params.s) $('#s').elem.value = params.s;
+  if(params.t) $('#t').elem.value = params.t;
+  if(params.v || params.verbose) {
+    const truthyTexts = ['1', 'true'];
+    $('#is-verbose').elem.checked = truthyTexts.includes(params.v) || truthyTexts.includes(params.verbose);
+  }
+  if(params.text) {
+    $('#text').elem.value = params.text;
+    $('#exec').elem.click();  // Auto Exec
+  }
+});
+
+    </script>
+  </head>
+  <body>
+
+<h1>Google Translator (HTML Version)</h1>
+
+<form>
+  <ul>
+    <li><label>Text To Translate (<code>?text=</code>) : <input type="text" id="text" value="" placeholder="Text To Translate"></label></li>
+    <li><label>Source Language (<code>?s=</code>) : <input type="text" id="s" value="auto" placeholder="auto"></label></li>
+    <li><label>Target Language (<code>?t=</code>) : <input type="text" id="t" value="en" placeholder="en"></label></li>
+    <li><label>Verbose (<code>?v=1</code> or <code>?verbose=true</code>) : <input type="checkbox" id="is-verbose"></label></li>
+    <li id="buttons"><button type="submit" id="exec">Exec</button> <button type="reset" id="reset">Reset</button></li>
+  </ul>
+</form>
+
+<dl id="output">
+  <dt id="verbose-title">Raw Response :</dt>
+  <dd id="verbose-content">
+    <pre id="verbose"></pre>
+  </dd>
+  <dt id="error-title">Error :</dt>
+  <dd id="error-content">
+    <pre id="error"></pre>
+  </dd>
+  <dt id="result-title">Result :</dt>
+  <dd id="result-content">
+    <pre id="result"></pre>
+  </dd>
+</dl>
+
+<hr>
+<ul id="links">
+  <li><a href="https://neos21.net/">Neo's World</a></li>
+  <li><a href="https://github.com/Neos21/">GitHub - Neos21</a></li>
+  <li><a href="https://github.com/Neos21/google-translator">GitHub - google-translator</a></li>
+  <li><a href="https://neos21.github.io/google-translator">GitHub Pages - google-translator : Google Translator (HTML Version)</a></li>
+</ul>
+
+  </body>
+</html>

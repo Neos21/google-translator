@@ -8,9 +8,9 @@ function usage() {
   local file_name="$(basename $0)"
   cat << EOL
 
-${file_name} - Google Translator
+${file_name} - Google Translator (Bash Version)
 
-Usage: ${file_name} [options] <text>"
+Usage: ${file_name} [options] <text>
 
 Arguments:
   text  Text To Translate
@@ -38,6 +38,10 @@ function invalid() {
   exit 1
 }
 
+if !(type 'curl' > /dev/null 2>&1); then
+  invalid 'This Script Requires '\''curl'\'' Command'
+  exit 1
+fi
 if !(type 'jq' > /dev/null 2>&1); then
   invalid 'This Script Requires '\''jq'\'' Command'
   exit 1
@@ -84,12 +88,11 @@ while (( $# > 0 )); do
   esac
   shift
 done
-#echo "-s [${s}] : -t [${t}] : -v [${is_verbose}] : text [${text}]"
-
 if [ -z "${text}" ]; then
   invalid 'Please Input Text'
   exit 1
 fi
+#echo "-s [${s}] : -t [${t}] : -v [${is_verbose}] : text [${text}]"
 
 function create_url() {
   local source_language="${1:-auto}"  # 1st Argument or Default 'auto'
